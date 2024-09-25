@@ -60,10 +60,4 @@ canvas {
 
     button {
         width: 70px;
-        font-size: 10px;  /* Further shrink button size */
-    }
-
-    .button-container {
-        flex-direction: column;
-    }
-}
+        font-size: 10px
