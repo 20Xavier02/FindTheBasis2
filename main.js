@@ -2,9 +2,9 @@ document.addEventListener('DOMContentLoaded', (event) => {
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
-    // Adjust canvas size dynamically for smaller layout
+    // Adjust canvas size dynamically
     function resizeCanvas() {
-        const maxGridSize = 500;  // Max grid size shrunk for desktop
+        const maxGridSize = 500;  // Max grid size for desktop
         const screenHeight = window.innerHeight * 0.5; // Adjust canvas height to be 50% of screen height
         const screenWidth = window.innerWidth;
 
@@ -27,8 +27,9 @@ document.addEventListener('DOMContentLoaded', (event) => {
     resizeCanvas();
 
     const origin = { x: canvas.width / 2, y: canvas.height / 2 };
-    const initialUnitVectorX = { x: 50, y: 0 };
-    const initialUnitVectorY = { x: 0, y: -50 };
+    const gridSpacing = 50;  // Set the spacing for the grid lines
+    const initialUnitVectorX = { x: gridSpacing, y: 0 };
+    const initialUnitVectorY = { x: 0, y: -gridSpacing };
     let unitVectorX = { ...initialUnitVectorX };
     let unitVectorY = { ...initialUnitVectorY };
 
@@ -41,23 +42,23 @@ document.addEventListener('DOMContentLoaded', (event) => {
     let isPaused = false;
 
     function gridToCanvas(point) {
-        return { x: origin.x + point.x * 50, y: origin.y - point.y * 50 };
+        return { x: origin.x + point.x * gridSpacing, y: origin.y - point.y * gridSpacing };
     }
 
     function canvasToGrid(point) {
-        return { x: Math.round((point.x - origin.x) / 50), y: Math.round((origin.y - point.y) / 50) };
+        return { x: Math.round((point.x - origin.x) / gridSpacing), y: Math.round((origin.y - point.y) / gridSpacing) };
     }
 
     function drawGrid() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.strokeStyle = 'lightgray';
-        for (let i = -canvas.width / 2; i <= canvas.width / 2; i += 50) {
+        for (let i = -canvas.width / 2; i <= canvas.width / 2; i += gridSpacing) {
             ctx.beginPath();
             ctx.moveTo(origin.x + i, 0);
             ctx.lineTo(origin.x + i, canvas.height);
             ctx.stroke();
         }
-        for (let j = -canvas.height / 2; j <= canvas.height / 2; j += 50) {
+        for (let j = -canvas.height / 2; j <= canvas.height / 2; j += gridSpacing) {
             ctx.beginPath();
             ctx.moveTo(0, origin.y - j);
             ctx.lineTo(canvas.width, origin.y - j);
@@ -140,44 +141,41 @@ document.addEventListener('DOMContentLoaded', (event) => {
         drawPoints();
     }
 
-    canvas.addEventListener('mousedown', (event) => {
-        if (gameWon || isPaused) return;
-
-        const rect = canvas.getBoundingClientRect();
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
-        const clickPoint = { x: x, y: y };
-
-        if (isOnVector(clickPoint, unitVectorX)) {
-            dragging = 'unitVectorX';
-        } else if (isOnVector(clickPoint, unitVectorY)) {
-            dragging = 'unitVectorY';
-        }
-    });
-
-    canvas.addEventListener('mousemove', (event) => {
-        if (dragging && !isPaused) {
-            const rect = canvas.getBoundingClientRect();
-            const x = event.clientX - rect.left;
-            const y = event.clientY - rect.top;
-            const gridPoint = canvasToGrid({ x, y });
-
-            const snappedX = Math.round(gridPoint.x) * 50;
-            const snappedY = Math.round(gridPoint.y) * -50;
-
-            if (dragging === 'unitVectorX') {
-                unitVectorX = { x: snappedX, y: snappedY };
-            } else if (dragging === 'unitVectorY') {
-                unitVectorY = { x: snappedX, y: snappedY };
-            }
-
+    // Handling buttons and game controls
+    document.getElementById('goButton').addEventListener('click', () => {
+        if (gameWon) return;
+        if (!gameStarted) {
+            gameStarted = true;
             draw();
         }
+        moveCounter += 1;
+        document.getElementById('moveCounter').innerText = `${moveCounter}`;
+        drawTransformedVector(); // Show the transformed vector on Go click
     });
 
-    canvas.addEventListener('mouseup', () => { dragging = null; });
+    document.getElementById('resetButton').addEventListener('click', () => {
+        initializeGame();
+    });
 
-    // Initialize game
-    initializeGame();
+    document.getElementById('pauseButton').addEventListener('click', () => {
+        togglePause();
+    });
+
+    function togglePause() {
+        if (gameWon) return;
+
+        if (isPaused) {
+            isPaused = false;
+            document.getElementById('pauseButton').innerText = 'Pause';
+            draw();
+        } else {
+            isPaused = true;
+            document.getElementById('pauseButton').innerText = 'Resume';
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawGrid();
+            drawAxes();
+        }
+    }
+
+    initializeGame(); // Start the game when the page loads
 });
-
