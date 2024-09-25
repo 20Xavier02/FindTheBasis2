@@ -44,22 +44,14 @@ button {
 /* Centering and scaling the canvas */
 canvas {
     border: 1px solid black;
-    width: 90%;  /* Adjust canvas width to 90% of the screen width */
+    width: 90%;  /* Scale down the canvas for smaller screens */
     max-width: 600px;
     height: auto;
     margin: 20px 0;
 }
 
-.equation {
-    margin-top: 20px;
-    width: 100%;
-    max-width: 600px;
-    margin-left: auto;
-    margin-right: auto;
-}
-
-/* Media queries for smaller screens */
-@media (max-width: 600px) {
+/* Media queries for smaller devices */
+@media (max-width: 768px) {
     .container {
         padding: 10px;
     }
