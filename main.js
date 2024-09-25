@@ -2,35 +2,28 @@ document.addEventListener('DOMContentLoaded', (event) => {
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
-    // Function to adjust the size of the grid based on screen size
-    function adjustGridSize() {
-        const maxGridSize = 600;  // Original grid size
+    // Adjust canvas size dynamically
+    function resizeCanvas() {
+        const maxGridSize = 600;  // Max grid size for larger screens
         const screenWidth = window.innerWidth;
 
-        // If the screen width is smaller than the grid size, scale it down
         if (screenWidth < maxGridSize) {
-            const newSize = screenWidth * 0.9;  // 90% of screen width
+            const newSize = screenWidth * 0.9;  // Scale to 90% of screen width for smaller devices
             canvas.style.width = `${newSize}px`;
             canvas.style.height = `${newSize}px`;
         } else {
             canvas.style.width = `${maxGridSize}px`;
             canvas.style.height = `${maxGridSize}px`;
         }
-        resizeCanvas();  // Adjust canvas drawing area accordingly
-    }
 
-    function resizeCanvas() {
         canvas.width = canvas.clientWidth;
         canvas.height = canvas.clientHeight;
     }
 
-    window.addEventListener('resize', adjustGridSize);
-    adjustGridSize();
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
 
     const origin = { x: canvas.width / 2, y: canvas.height / 2 };
-    const width = canvas.width;
-    const height = canvas.height;
-
     const initialUnitVectorX = { x: 50, y: 0 };
     const initialUnitVectorY = { x: 0, y: -50 };
     let unitVectorX = { ...initialUnitVectorX };
@@ -44,27 +37,106 @@ document.addEventListener('DOMContentLoaded', (event) => {
     let elapsedTime = 0;
     let isPaused = false;
 
-    // Game logic and functions remain the same...
+    // Drawing and game logic remain the same...
 
-    function draw() {
+    function drawGrid() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = 'lightgray';
+        for (let i = -canvas.width / 2; i <= canvas.width / 2; i += 50) {
+            ctx.beginPath();
+            ctx.moveTo(origin.x + i, 0);
+            ctx.lineTo(origin.x + i, canvas.height);
+            ctx.stroke();
+        }
+        for (let j = -canvas.height / 2; j <= canvas.height / 2; j += 50) {
+            ctx.beginPath();
+            ctx.moveTo(0, origin.y - j);
+            ctx.lineTo(canvas.width, origin.y - j);
+            ctx.stroke();
+        }
+    }
+
+    function drawAxes() {
+        ctx.beginPath();
+        ctx.moveTo(0, origin.y);
+        ctx.lineTo(canvas.width, origin.y);
+        ctx.strokeStyle = 'black';
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(origin.x, 0);
+        ctx.lineTo(origin.x, canvas.height);
+        ctx.strokeStyle = 'black';
+        ctx.stroke();
+
+        ctx.font = '12px Arial';
+        ctx.fillStyle = 'black';
+        ctx.fillText('X', canvas.width - 10, origin.y - 10);
+        ctx.fillText('Y', origin.x + 10, 10);
+    }
+
+    function drawArrow(start, end, color, label = '') {
+        const headLength = 10;
+        const dx = end.x - start.x;
+        const dy = end.y - start.y;
+        const angle = Math.atan2(dy, dx);
+
+        ctx.beginPath();
+        ctx.moveTo(start.x, start.y);
+        ctx.lineTo(end.x, end.y);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(end.x, end.y);
+        ctx.lineTo(end.x - headLength * Math.cos(angle - Math.PI / 6), end.y - headLength * Math.sin(angle - Math.PI / 6));
+        ctx.lineTo(end.x - headLength * Math.cos(angle + Math.PI / 6), end.y - headLength * Math.sin(angle + Math.PI / 6));
+        ctx.lineTo(end.x, end.y);
+        ctx.strokeStyle = color;
+        ctx.stroke();
+        ctx.fillStyle = color;
+        ctx.fill();
+
+        if (label) {
+            ctx.font = '12px Arial';
+            ctx.fillStyle = color;
+            ctx.fillText(label, end.x + 5, end.y - 5);
+        }
+    }
+
+    function drawPoints() {
+        let redCanvasPoint = gridToCanvas(redPoint);
+        ctx.beginPath();
+        ctx.arc(redCanvasPoint.x, redCanvasPoint.y, 5, 0, Math.PI * 2);
+        ctx.fillStyle = 'red';
+        ctx.fill();
+
+        let blueCanvasPoint = gridToCanvas(bluePoint);
+        ctx.beginPath();
+        ctx.arc(blueCanvasPoint.x, blueCanvasPoint.y, 5, 0, Math.PI * 2);
+        ctx.fillStyle = 'blue';
+        ctx.fill();
+
+        drawArrow(origin, blueCanvasPoint, 'blue');
+    }
+
+    function initializeGame() {
+        moveCounter = 0;
+        gameWon = false;
+        gameStarted = false;
+        document.getElementById('moveCounter').innerText = '0';
         drawGrid();
         drawAxes();
-        drawArrow(origin, { x: origin.x + initialUnitVectorX.x, y: origin.y + initialUnitVectorX.y }, 'black', 'i');
-        drawArrow(origin, { x: origin.x + initialUnitVectorY.x, y: origin.y + initialUnitVectorY.y }, 'black', 'j');
-
-        const labelIX = (unitVectorX.x !== initialUnitVectorX.x || unitVectorX.y !== initialUnitVectorX.y) ? "i'" : '';
-        const labelJY = (unitVectorY.x !== initialUnitVectorY.x || unitVectorY.y !== initialUnitVectorY.y) ? "j'" : '';
-        drawArrow(origin, { x: origin.x + unitVectorX.x, y: origin.y + unitVectorX.y }, 'green', labelIX);
-        drawArrow(origin, { x: origin.x + unitVectorY.x, y: origin.y + unitVectorY.y }, 'green', labelJY);
         drawPoints();
     }
 
-    // Handle touch events for mobile devices
+    // Touch events for mobile devices
     function handleTouchStart(event) {
         const rect = canvas.getBoundingClientRect();
         const x = event.touches[0].clientX - rect.left;
         const y = event.touches[0].clientY - rect.top;
-        const clickPoint = { x: x, y: y };
+        const clickPoint = { x, y };
 
         if (isOnVector(clickPoint, unitVectorX)) {
             dragging = 'unitVectorX';
@@ -93,13 +165,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
         }
     }
 
-    canvas.addEventListener('touchstart', handleTouchStart);
-    canvas.addEventListener('touchmove', handleTouchMove);
-    canvas.addEventListener('touchend', () => {
-        dragging = null;
-    });
-
-    // Mouse events for desktops remain unchanged
+    // Mouse events for desktop
     canvas.addEventListener('mousedown', (event) => {
         if (gameWon || isPaused) return;
 
@@ -115,32 +181,11 @@ document.addEventListener('DOMContentLoaded', (event) => {
         }
     });
 
-    canvas.addEventListener('mousemove', handleMouseMove);
-    canvas.addEventListener('mouseup', () => {
-        dragging = null;
-    });
+    canvas.addEventListener('touchstart', handleTouchStart);
+    canvas.addEventListener('touchmove', handleTouchMove);
+    canvas.addEventListener('touchend', () => { dragging = null; });
 
-    // Initialize game properly
-    function initializeGame() {
-        isPaused = false;
-        gameWon = false;
-        gameStarted = false;
-        moveCounter = 0;
-        elapsedTime = 0;
-        document.getElementById('moveCounter').innerText = '0';
-        document.getElementById('timer').innerText = 'Timer: 0 seconds';
-        document.getElementById('winMessage').innerText = '';
-        drawGrid();
-        draw();
-    }
-
-    // Start the game when "Go" button is clicked
-    document.getElementById('goButton').addEventListener('click', () => {
-        if (!gameStarted) {
-            startTimer();
-            gameStarted = true;
-        }
-    });
-
+    // Initialize game
     initializeGame();
 });
+
