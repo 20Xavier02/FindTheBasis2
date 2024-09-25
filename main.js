@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
     resizeCanvas();
 
     const origin = { x: canvas.width / 2, y: canvas.height / 2 };
-    const gridSpacing = 50;  // Set the spacing for the grid lines
+    const gridSpacing = canvas.width / 10;  // Dynamically calculate the spacing for the grid lines
     const initialUnitVectorX = { x: gridSpacing, y: 0 };
     const initialUnitVectorY = { x: 0, y: -gridSpacing };
     let unitVectorX = { ...initialUnitVectorX };
@@ -116,13 +116,13 @@ document.addEventListener('DOMContentLoaded', (event) => {
     }
 
     function drawPoints() {
-        let redCanvasPoint = gridToCanvas(redPoint);
+        let redCanvasPoint = gridToCanvas({ x: 3, y: 2 });  // Example red point
         ctx.beginPath();
         ctx.arc(redCanvasPoint.x, redCanvasPoint.y, 5, 0, Math.PI * 2);
         ctx.fillStyle = 'red';
         ctx.fill();
 
-        let blueCanvasPoint = gridToCanvas(bluePoint);
+        let blueCanvasPoint = gridToCanvas({ x: -2, y: -1 });  // Example blue point
         ctx.beginPath();
         ctx.arc(blueCanvasPoint.x, blueCanvasPoint.y, 5, 0, Math.PI * 2);
         ctx.fillStyle = 'blue';
