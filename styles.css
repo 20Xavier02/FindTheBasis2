@@ -38,9 +38,23 @@ p {
 }
 
 button {
-    width: 80px;  /* Shrink button width */
+    background-color: #4CAF50;
+    color: white;
+    border: none;
     padding: 8px;
     font-size: 12px;  /* Shrink button text */
+    width: 80px;  /* Shrink button width */
+    cursor: pointer;
+    border-radius: 5px;
+}
+
+button:hover {
+    background-color: #45a049;
+}
+
+button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
 }
 
 /* Centering and scaling the canvas */
@@ -58,12 +72,47 @@ canvas {
         padding: 5px;
     }
 
+    .button-container {
+        flex-direction: row;  /* Make buttons horizontal on smaller screens */
+        flex-wrap: wrap;
+        justify-content: space-around;
+    }
+
     button {
         width: 70px;
         font-size: 10px;  /* Further shrink button size */
+        padding: 5px;
     }
 
-    .button-container {
-        flex-direction: column;
+    canvas {
+        width: 100%;  /* Make the canvas fully responsive */
+        max-width: 450px;
     }
+}
+
+#gameCanvas {
+    display: block;
+    margin: 0 auto;
+    border: 2px solid black;
+}
+
+/* Styling for win message and solution text */
+#winMessage {
+    font-size: 16px;
+    text-align: center;
+    margin-top: 10px;
+}
+
+#solutionText {
+    font-size: 16px;
+    text-align: center;
+    margin-top: 20px;
+}
+
+/* Button container for responsive layout */
+#buttonContainer {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
 }
