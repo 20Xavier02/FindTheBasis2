@@ -1,3 +1,9 @@
+/* Disable scrolling and swiping */
+html, body {
+    overflow: hidden; /* Prevent all scrolling */
+    touch-action: none; /* Disable gestures on touch screens */
+}
+
 body {
     font-family: Arial, sans-serif;
     margin: 0;
@@ -7,7 +13,7 @@ body {
     align-items: center;
     flex-direction: column;
     min-height: 100vh;
-    overflow: hidden; /* Prevent scrolling */
+    overflow: hidden; /* Ensure no scrolling happens */
 }
 
 .container {
@@ -17,7 +23,7 @@ body {
     text-align: center;
     width: 100%;
     max-width: 800px;
-    padding: 10px;  /* Reduced padding for compactness */
+    padding: 10px;
 }
 
 h1 {
@@ -64,6 +70,7 @@ canvas {
     max-width: 500px;  /* Reduced max width */
     height: auto;
     margin: 10px 0;
+    touch-action: none; /* Disable gestures on the canvas for mobile */
 }
 
 /* Media queries for smaller devices */
@@ -90,12 +97,6 @@ canvas {
     }
 }
 
-#gameCanvas {
-    display: block;
-    margin: 0 auto;
-    border: 2px solid black;
-}
-
 /* Styling for win message and solution text */
 #winMessage {
     font-size: 16px;
@@ -107,6 +108,8 @@ canvas {
     font-size: 16px;
     text-align: center;
     margin-top: 20px;
+    position: absolute;
+    z-index: 1; /* Overlay the solution text over the grid */
 }
 
 /* Button container for responsive layout */
@@ -116,3 +119,4 @@ canvas {
     flex-wrap: wrap;
     gap: 10px;
 }
+
