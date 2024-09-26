@@ -2,11 +2,10 @@ document.addEventListener('DOMContentLoaded', (event) => {
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
-    function resizeCanvas() {
-        const screenSize = Math.min(window.innerWidth * 0.8, window.innerHeight * 0.8);
-        canvas.style.width = `${screenSize}px`;
-        canvas.style.height = `${screenSize}px`;
+    // Prevent scrolling on mobile and desktop
+    document.body.style.overflow = 'hidden';
 
+    function resizeCanvas() {
         canvas.width = canvas.clientWidth;
         canvas.height = canvas.clientHeight;
     }
@@ -30,9 +29,11 @@ document.addEventListener('DOMContentLoaded', (event) => {
     let isPaused = false;
     let solveClicked = false;
 
-    // Prevent scrolling on mobile devices
-    document.body.style.overflow = 'hidden';
-    
+    // Prevent touch events from scrolling the page
+    window.addEventListener('touchmove', (event) => {
+        event.preventDefault();
+    }, { passive: false });
+
     // Random point generation with restrictions
     function getRandomPoint() {
         const min = -3;
@@ -124,227 +125,56 @@ document.addEventListener('DOMContentLoaded', (event) => {
         }
     }
 
-    function drawPoints() {
-        let redCanvasPoint = gridToCanvas(redPoint);
-        ctx.beginPath();
-        ctx.arc(redCanvasPoint.x, redCanvasPoint.y, 5, 0, Math.PI * 2);
-        ctx.fillStyle = 'red';
-        ctx.fill();
+    // Display mathematical solution in the center of the grid when "Solve" is clicked
+    function displaySolution() {
+        const solutionText = `
+            Solution:
+            \\[
+            A = 
+            \\begin{bmatrix}
+            ${unitVectorX.x / gridSpacing} & ${unitVectorY.x / gridSpacing} \\\\
+            ${-unitVectorX.y / gridSpacing} & ${-unitVectorY.y / gridSpacing}
+            \\end{bmatrix}
+            \\]
+            \\[
+            A \\cdot \\mathbf{blue} = \\mathbf{red}
+            \\]
+        `;
 
-        let blueCanvasPoint = gridToCanvas(bluePoint);
-        ctx.beginPath();
-        ctx.arc(blueCanvasPoint.x, blueCanvasPoint.y, 5, 0, Math.PI * 2);
-        ctx.fillStyle = 'blue';
-        ctx.fill();
+        const midX = origin.x;
+        const midY = origin.y;
 
-        drawArrow(origin, blueCanvasPoint, 'blue', '');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);  // Clear the grid
+        ctx.font = '16px Arial';
+        ctx.fillStyle = 'black';
+        ctx.textAlign = 'center';
+        ctx.fillText('Mathematical Solution:', midX, midY - 40);  // Solution header
+        ctx.fillText(`a = ${unitVectorX.x / gridSpacing}`, midX, midY - 20);
+        ctx.fillText(`b = ${unitVectorY.x / gridSpacing}`, midX, midY);
+        ctx.fillText(`c = ${-unitVectorX.y / gridSpacing}`, midX, midY + 20);
+        ctx.fillText(`d = ${-unitVectorY.y / gridSpacing}`, midX, midY + 40);
+
+        MathJax.typeset();  // Update MathJax rendering
     }
 
-    function drawTransformedVector() {
-        const A = [
-            [(unitVectorX.x / gridSpacing), (unitVectorY.x / gridSpacing)],
-            [(-unitVectorX.y / gridSpacing), (-unitVectorY.y / gridSpacing)]
-        ];
-
-        const transformedBluePoint = {
-            x: (A[0][0] * bluePoint.x) + (A[0][1] * bluePoint.y),
-            y: (A[1][0] * bluePoint.x) + (A[1][1] * bluePoint.y)
-        };
-
-        const transformedBlueCanvasPoint = gridToCanvas(transformedBluePoint);
-        ctx.beginPath();
-        ctx.arc(transformedBlueCanvasPoint.x, transformedBlueCanvasPoint.y, 5, 0, Math.PI * 2);
-        ctx.fillStyle = 'lightblue';
-        ctx.fill();
-
-        drawArrow(origin, transformedBlueCanvasPoint, 'lightblue');
-
-        if (Math.round(transformedBluePoint.x) === redPoint.x && Math.round(transformedBluePoint.y) === redPoint.y) {
-            gameWon = true;
-            stopTimer();
-            document.getElementById('winMessage').innerText = `Congratulations! You won in ${moveCounter} moves and ${elapsedTime} seconds!`;
-            disableButtonsAfterWin();
-        }
-    }
-
-    // Draw function
     function draw() {
         drawGrid();
         drawAxes();
-        drawArrow(origin, { x: origin.x + initialUnitVectorX.x, y: origin.y + initialUnitVectorX.y }, 'black', 'i');
-        drawArrow(origin, { x: origin.x + initialUnitVectorY.x, y: origin.y + initialUnitVectorY.y }, 'black', 'j');
-
-        const labelIX = (unitVectorX.x !== initialUnitVectorX.x || unitVectorX.y !== initialUnitVectorX.y) ? "i'" : '';
-        const labelJY = (unitVectorY.x !== initialUnitVectorY.x || unitVectorY.y !== initialUnitVectorY.y) ? "j'" : '';
-        drawArrow(origin, { x: origin.x + unitVectorX.x, y: origin.y + unitVectorX.y }, 'green', labelIX);
-        drawArrow(origin, { x: origin.x + unitVectorY.x, y: origin.y + unitVectorY.y }, 'green', labelJY);
-        drawPoints();
+        drawArrow(origin, { x: origin.x + unitVectorX.x, y: origin.y + unitVectorX.y }, 'green', "i'");
+        drawArrow(origin, { x: origin.x + unitVectorY.x, y: origin.y + unitVectorY.y }, 'green', "j'");
     }
 
-    // Dragging functionality for computers and phones
-    function handleDragging(event) {
-        if (dragging && !isPaused) {
-            const rect = canvas.getBoundingClientRect();
-            const x = event.touches ? event.touches[0].clientX - rect.left : event.clientX - rect.left;
-            const y = event.touches ? event.touches[0].clientY - rect.top : event.clientY - rect.top;
-            const gridPoint = canvasToGrid({ x, y });
-
-            const snappedX = Math.round(gridPoint.x) * gridSpacing;
-            const snappedY = Math.round(gridPoint.y) * -gridSpacing;
-
-            if (dragging === 'unitVectorX') {
-                unitVectorX = { x: snappedX, y: snappedY };
-            } else if (dragging === 'unitVectorY') {
-                unitVectorY = { x: snappedX, y: snappedY };
-            }
-
-            draw();
-        }
-    }
-
-    function isOnVector(point, vector) {
-        const vectorPoint = { x: origin.x + vector.x, y: origin.y + vector.y };
-        const distance = Math.sqrt((point.x - vectorPoint.x) ** 2 + (point.y - vectorPoint.y) ** 2);
-        return distance < 10;
-    }
-
-    canvas.addEventListener('mousedown', (event) => {
-        if (gameWon || isPaused) return;
-
-        const rect = canvas.getBoundingClientRect();
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
-        const clickPoint = { x: x, y: y };
-
-        if (isOnVector(clickPoint, unitVectorX)) {
-            dragging = 'unitVectorX';
-        } else if (isOnVector(clickPoint, unitVectorY)) {
-            dragging = 'unitVectorY';
-        }
-    });
-
-    canvas.addEventListener('touchstart', (event) => {
-        if (gameWon || isPaused) return;
-
-        const rect = canvas.getBoundingClientRect();
-        const x = event.touches[0].clientX - rect.left;
-        const y = event.touches[0].clientY - rect.top;
-        const clickPoint = { x: x, y: y };
-
-        if (isOnVector(clickPoint, unitVectorX)) {
-            dragging = 'unitVectorX';
-        } else if (isOnVector(clickPoint, unitVectorY)) {
-            dragging = 'unitVectorY';
-        }
-    });
-
-    canvas.addEventListener('mousemove', handleDragging);
-    canvas.addEventListener('touchmove', handleDragging);
-
-    canvas.addEventListener('mouseup', () => { dragging = null; });
-    canvas.addEventListener('touchend', () => { dragging = null; });
-
-    // Timer functionality
-    function startTimer() {
-        if (!timer) {
-            timer = setInterval(() => {
-                elapsedTime += 1;
-                document.getElementById('timer').innerText = `Timer: ${elapsedTime} seconds`;
-            }, 1000);
-        }
-    }
-
-    function stopTimer() {
-        clearInterval(timer);
-        timer = null;
-    }
-
-    function togglePause() {
-        if (gameWon) return;
-
-        if (isPaused) {
-            isPaused = false;
-            document.getElementById('pauseButton').innerText = 'Pause';
-            startTimer();
-            draw();
-        } else {
-            isPaused = true;
-            document.getElementById('pauseButton').innerText = 'Resume';
-            stopTimer();
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            drawGrid();
-            drawAxes();
-        }
-    }
-
-    // Solve functionality
+    // Handle "Solve" button click to toggle solution display
     document.getElementById('solveButton').addEventListener('click', () => {
         solveClicked = !solveClicked;
         if (solveClicked) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            const solutionText = `
-                Solution:
-                \\[
-                A = 
-                \\begin{bmatrix}
-                ${unitVectorX.x / gridSpacing} & ${unitVectorY.x / gridSpacing} \\\\
-                ${-unitVectorX.y / gridSpacing} & ${-unitVectorY.y / gridSpacing}
-                \\end{bmatrix}
-                \\]
-                \\[
-                A \\cdot \\mathbf{blue} = \\mathbf{red}
-                \\]
-            `;
-            document.getElementById('solutionText').innerHTML = solutionText;
-            MathJax.typeset(); // Re-render MathJax for solution display
+            displaySolution();  // Show the solution text in the center
         } else {
-            document.getElementById('solutionText').innerHTML = '';
-            draw();
+            draw();  // Redraw the grid and vectors if toggled off
         }
     });
 
-    // Button functionality for Go, Reset, and Pause
-    document.getElementById('goButton').addEventListener('click', () => {
-        if (gameWon) return;
-        if (!gameStarted) {
-            gameStarted = true;
-            draw();
-            startTimer();
-        }
-        moveCounter += 1;
-        document.getElementById('moveCounter').innerText = `${moveCounter}`;
-        drawTransformedVector();
-    });
-
-    document.getElementById('resetButton').addEventListener('click', () => {
-        bluePoint = getRandomPoint();
-        redPoint = getRandomPoint();
-        unitVectorX = { ...initialUnitVectorX };
-        unitVectorY = { ...initialUnitVectorY };
-        moveCounter = 0;
-        gameWon = false;
-        gameStarted = false;
-        elapsedTime = 0;
-        document.getElementById('goButton').disabled = false;
-        document.getElementById('moveCounter').innerText = `${moveCounter}`;
-        document.getElementById('winMessage').innerText = '';
-        document.getElementById('timer').innerText = `Timer: ${elapsedTime} seconds`;
-
-        if (isPaused) {
-            togglePause();
-        }
-        draw();
-        startTimer();
-    });
-
-    document.getElementById('pauseButton').addEventListener('click', () => {
-        if (!gameWon) {
-            togglePause();
-        }
-    });
-
-    // Start the game with the grid and vectors shown, timer running
-    drawGrid();
+    // Initial draw and start timer
     draw();
     startTimer();
 });
