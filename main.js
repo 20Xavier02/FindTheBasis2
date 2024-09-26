@@ -3,6 +3,10 @@ document.addEventListener('DOMContentLoaded', (event) => {
     const ctx = canvas.getContext('2d');
 
     function resizeCanvas() {
+        const screenSize = Math.min(window.innerWidth * 0.8, window.innerHeight * 0.8);
+        canvas.style.width = `${screenSize}px`;
+        canvas.style.height = `${screenSize}px`;
+
         canvas.width = canvas.clientWidth;
         canvas.height = canvas.clientHeight;
     }
@@ -11,11 +15,9 @@ document.addEventListener('DOMContentLoaded', (event) => {
     resizeCanvas();
 
     const origin = { x: canvas.width / 2, y: canvas.height / 2 };
-    const width = canvas.width;
-    const height = canvas.height;
-
-    const initialUnitVectorX = { x: 50, y: 0 };
-    const initialUnitVectorY = { x: 0, y: -50 };
+    const gridSpacing = canvas.width / 12;  // Dynamically calculate for a 6x6 grid
+    const initialUnitVectorX = { x: gridSpacing, y: 0 };
+    const initialUnitVectorY = { x: 0, y: -gridSpacing };
     let unitVectorX = { ...initialUnitVectorX };
     let unitVectorY = { ...initialUnitVectorY };
 
@@ -26,55 +28,69 @@ document.addEventListener('DOMContentLoaded', (event) => {
     let timer = null;
     let elapsedTime = 0;
     let isPaused = false;
+    let solveClicked = false;
+
+    // Random point generation with restrictions
+    function getRandomPoint() {
+        const min = -3;
+        const max = 3;
+        let x, y;
+
+        do {
+            x = Math.floor(Math.random() * (max - min + 1)) + min;
+            y = Math.floor(Math.random() * (max - min + 1)) + min;
+        } while ((x === 1 && y === 0) || (x === 0 && y === 1) || (x === 0 && y === 0));
+
+        return { x: x, y: y };
+    }
+
+    let bluePoint = getRandomPoint();
+    let redPoint = getRandomPoint();
 
     function gridToCanvas(point) {
-        return { x: origin.x + point.x * 50, y: origin.y - point.y * 50 };
+        return { x: origin.x + point.x * gridSpacing, y: origin.y - point.y * gridSpacing };
     }
 
     function canvasToGrid(point) {
-        return { x: Math.round((point.x - origin.x) / 50), y: Math.round((origin.y - point.y) / 50) };
+        return { x: Math.round((point.x - origin.x) / gridSpacing), y: Math.round((origin.y - point.y) / gridSpacing) };
     }
 
+    // Draw grid
     function drawGrid() {
-        ctx.clearRect(0, 0, width, height);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.strokeStyle = 'lightgray';
-        for (let i = -width / 2; i <= width / 2; i += 50) {
+
+        for (let i = -canvas.width / 2; i <= canvas.width / 2; i += gridSpacing) {
             ctx.beginPath();
             ctx.moveTo(origin.x + i, 0);
-            ctx.lineTo(origin.x + i, height);
+            ctx.lineTo(origin.x + i, canvas.height);
             ctx.stroke();
-            ctx.closePath();
         }
-        for (let j = -height / 2; j <= height / 2; j += 50) {
+
+        for (let j = -canvas.height / 2; j <= canvas.height / 2; j += gridSpacing) {
             ctx.beginPath();
             ctx.moveTo(0, origin.y - j);
-            ctx.lineTo(width, origin.y - j);
+            ctx.lineTo(canvas.width, origin.y - j);
             ctx.stroke();
-            ctx.closePath();
         }
     }
 
+    // Draw axes
     function drawAxes() {
         ctx.beginPath();
-        ctx.moveTo(0, origin.y);
-        ctx.lineTo(width, origin.y);
+        ctx.moveTo(0, origin.y);  // X-axis
+        ctx.lineTo(canvas.width, origin.y);
         ctx.strokeStyle = 'black';
         ctx.stroke();
-        ctx.closePath();
 
         ctx.beginPath();
-        ctx.moveTo(origin.x, 0);
-        ctx.lineTo(origin.x, height);
+        ctx.moveTo(origin.x, 0);  // Y-axis
+        ctx.lineTo(origin.x, canvas.height);
         ctx.strokeStyle = 'black';
         ctx.stroke();
-        ctx.closePath();
-
-        ctx.font = '12px Arial';
-        ctx.fillStyle = 'black';
-        ctx.fillText('X', width - 10, origin.y - 10);
-        ctx.fillText('Y', origin.x + 10, 10);
     }
 
+    // Draw arrows (vectors)
     function drawArrow(start, end, color, label = '') {
         const headLength = 10;
         const dx = end.x - start.x;
@@ -87,20 +103,16 @@ document.addEventListener('DOMContentLoaded', (event) => {
         ctx.strokeStyle = color;
         ctx.lineWidth = 2;
         ctx.stroke();
-        ctx.closePath();
 
         ctx.beginPath();
         ctx.moveTo(end.x, end.y);
         ctx.lineTo(end.x - headLength * Math.cos(angle - Math.PI / 6), end.y - headLength * Math.sin(angle - Math.PI / 6));
         ctx.lineTo(end.x - headLength * Math.cos(angle + Math.PI / 6), end.y - headLength * Math.sin(angle + Math.PI / 6));
         ctx.lineTo(end.x, end.y);
-        ctx.lineTo(end.x - headLength * Math.cos(angle - Math.PI / 6), end.y - headLength * Math.sin(angle - Math.PI / 6));
         ctx.strokeStyle = color;
-        ctx.lineWidth = 2;
         ctx.stroke();
         ctx.fillStyle = color;
         ctx.fill();
-        ctx.closePath();
 
         if (label) {
             ctx.font = '12px Arial';
@@ -110,32 +122,30 @@ document.addEventListener('DOMContentLoaded', (event) => {
     }
 
     function drawPoints() {
-        let redCanvasPoint = gridToCanvas({ x: 3, y: 2 });
+        let redCanvasPoint = gridToCanvas(redPoint);
         ctx.beginPath();
         ctx.arc(redCanvasPoint.x, redCanvasPoint.y, 5, 0, Math.PI * 2);
         ctx.fillStyle = 'red';
         ctx.fill();
-        ctx.closePath();
 
-        let blueCanvasPoint = gridToCanvas({ x: -2, y: -1 });
+        let blueCanvasPoint = gridToCanvas(bluePoint);
         ctx.beginPath();
         ctx.arc(blueCanvasPoint.x, blueCanvasPoint.y, 5, 0, Math.PI * 2);
         ctx.fillStyle = 'blue';
         ctx.fill();
-        ctx.closePath();
 
         drawArrow(origin, blueCanvasPoint, 'blue', '');
     }
 
     function drawTransformedVector() {
         const A = [
-            [(unitVectorX.x / 50), (unitVectorY.x / 50)],
-            [(-unitVectorX.y / 50), (-unitVectorY.y / 50)]
+            [(unitVectorX.x / gridSpacing), (unitVectorY.x / gridSpacing)],
+            [(-unitVectorX.y / gridSpacing), (-unitVectorY.y / gridSpacing)]
         ];
 
         const transformedBluePoint = {
-            x: (A[0][0] * -2) + (A[0][1] * -1),
-            y: (A[1][0] * -2) + (A[1][1] * -1)
+            x: (A[0][0] * bluePoint.x) + (A[0][1] * bluePoint.y),
+            y: (A[1][0] * bluePoint.x) + (A[1][1] * bluePoint.y)
         };
 
         const transformedBlueCanvasPoint = gridToCanvas(transformedBluePoint);
@@ -143,11 +153,10 @@ document.addEventListener('DOMContentLoaded', (event) => {
         ctx.arc(transformedBlueCanvasPoint.x, transformedBlueCanvasPoint.y, 5, 0, Math.PI * 2);
         ctx.fillStyle = 'lightblue';
         ctx.fill();
-        ctx.closePath();
 
         drawArrow(origin, transformedBlueCanvasPoint, 'lightblue');
 
-        if (Math.round(transformedBluePoint.x) === 3 && Math.round(transformedBluePoint.y) === 2) {
+        if (Math.round(transformedBluePoint.x) === redPoint.x && Math.round(transformedBluePoint.y) === redPoint.y) {
             gameWon = true;
             stopTimer();
             document.getElementById('winMessage').innerText = `Congratulations! You won in ${moveCounter} moves and ${elapsedTime} seconds!`;
@@ -155,6 +164,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
         }
     }
 
+    // Draw function
     function draw() {
         drawGrid();
         drawAxes();
@@ -168,7 +178,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
         drawPoints();
     }
 
-    // Dragging functionality for green vectors on both computers and phones
+    // Dragging functionality for computers and phones
     function handleDragging(event) {
         if (dragging && !isPaused) {
             const rect = canvas.getBoundingClientRect();
@@ -176,8 +186,8 @@ document.addEventListener('DOMContentLoaded', (event) => {
             const y = event.touches ? event.touches[0].clientY - rect.top : event.clientY - rect.top;
             const gridPoint = canvasToGrid({ x, y });
 
-            const snappedX = Math.round(gridPoint.x) * 50;
-            const snappedY = Math.round(gridPoint.y) * -50;
+            const snappedX = Math.round(gridPoint.x) * gridSpacing;
+            const snappedY = Math.round(gridPoint.y) * -gridSpacing;
 
             if (dragging === 'unitVectorX') {
                 unitVectorX = { x: snappedX, y: snappedY };
@@ -264,6 +274,18 @@ document.addEventListener('DOMContentLoaded', (event) => {
         }
     }
 
+    // Solve functionality
+    document.getElementById('solveButton').addEventListener('click', () => {
+        solveClicked = !solveClicked;
+        if (solveClicked) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            document.getElementById('solutionText').innerText = `Solution: ${unitVectorX.x}, ${unitVectorX.y}, ${unitVectorY.x}, ${unitVectorY.y}`;
+        } else {
+            document.getElementById('solutionText').innerText = '';
+            draw();
+        }
+    });
+
     // Button functionality for Go, Reset, and Pause
     document.getElementById('goButton').addEventListener('click', () => {
         if (gameWon) return;
@@ -278,6 +300,8 @@ document.addEventListener('DOMContentLoaded', (event) => {
     });
 
     document.getElementById('resetButton').addEventListener('click', () => {
+        bluePoint = getRandomPoint();
+        redPoint = getRandomPoint();
         unitVectorX = { ...initialUnitVectorX };
         unitVectorY = { ...initialUnitVectorY };
         moveCounter = 0;
@@ -307,4 +331,3 @@ document.addEventListener('DOMContentLoaded', (event) => {
     draw();
     startTimer();
 });
-
