@@ -30,6 +30,9 @@ document.addEventListener('DOMContentLoaded', (event) => {
     let isPaused = false;
     let solveClicked = false;
 
+    // Prevent scrolling on mobile devices
+    document.body.style.overflow = 'hidden';
+    
     // Random point generation with restrictions
     function getRandomPoint() {
         const min = -3;
@@ -279,9 +282,23 @@ document.addEventListener('DOMContentLoaded', (event) => {
         solveClicked = !solveClicked;
         if (solveClicked) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            document.getElementById('solutionText').innerText = `Solution: ${unitVectorX.x}, ${unitVectorX.y}, ${unitVectorY.x}, ${unitVectorY.y}`;
+            const solutionText = `
+                Solution:
+                \\[
+                A = 
+                \\begin{bmatrix}
+                ${unitVectorX.x / gridSpacing} & ${unitVectorY.x / gridSpacing} \\\\
+                ${-unitVectorX.y / gridSpacing} & ${-unitVectorY.y / gridSpacing}
+                \\end{bmatrix}
+                \\]
+                \\[
+                A \\cdot \\mathbf{blue} = \\mathbf{red}
+                \\]
+            `;
+            document.getElementById('solutionText').innerHTML = solutionText;
+            MathJax.typeset(); // Re-render MathJax for solution display
         } else {
-            document.getElementById('solutionText').innerText = '';
+            document.getElementById('solutionText').innerHTML = '';
             draw();
         }
     });
