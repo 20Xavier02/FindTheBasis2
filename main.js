@@ -2,9 +2,6 @@ document.addEventListener('DOMContentLoaded', (event) => {
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
-    // Prevent scrolling on mobile and desktop
-    document.body.style.overflow = 'hidden';
-
     function resizeCanvas() {
         canvas.width = canvas.clientWidth;
         canvas.height = canvas.clientHeight;
@@ -125,8 +122,11 @@ document.addEventListener('DOMContentLoaded', (event) => {
         }
     }
 
-    // Display mathematical solution in the center of the grid when "Solve" is clicked
+    // Display the solution text in the center of the grid
     function displaySolution() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);  // Clear the grid
+        drawGrid();  // Keep the grid visible
+
         const solutionText = `
             Solution:
             \\[
@@ -141,18 +141,17 @@ document.addEventListener('DOMContentLoaded', (event) => {
             \\]
         `;
 
+        // Display the solution in the center of the canvas
         const midX = origin.x;
         const midY = origin.y;
 
-        ctx.clearRect(0, 0, canvas.width, canvas.height);  // Clear the grid
         ctx.font = '16px Arial';
         ctx.fillStyle = 'black';
         ctx.textAlign = 'center';
-        ctx.fillText('Mathematical Solution:', midX, midY - 40);  // Solution header
-        ctx.fillText(`a = ${unitVectorX.x / gridSpacing}`, midX, midY - 20);
-        ctx.fillText(`b = ${unitVectorY.x / gridSpacing}`, midX, midY);
-        ctx.fillText(`c = ${-unitVectorX.y / gridSpacing}`, midX, midY + 20);
-        ctx.fillText(`d = ${-unitVectorY.y / gridSpacing}`, midX, midY + 40);
+        ctx.fillText('Solution:', midX, midY - 100);
+        ctx.fillText(`A = [${unitVectorX.x / gridSpacing} ${unitVectorY.x / gridSpacing}]`, midX, midY - 70);
+        ctx.fillText(`[${-unitVectorX.y / gridSpacing} ${-unitVectorY.y / gridSpacing}]`, midX, midY - 50);
+        ctx.fillText(`A * blue = red`, midX, midY - 20);
 
         MathJax.typeset();  // Update MathJax rendering
     }
@@ -174,7 +173,70 @@ document.addEventListener('DOMContentLoaded', (event) => {
         }
     });
 
+    // Dragging and moving the vectors
+    function handleMouseMove(event) {
+        if (dragging && !isPaused) {
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            const gridPoint = canvasToGrid({ x, y });
+
+            const snappedX = Math.round(gridPoint.x) * gridSpacing;
+            const snappedY = Math.round(gridPoint.y) * -gridSpacing;
+
+            if (dragging === 'unitVectorX') {
+                unitVectorX = { x: snappedX, y: snappedY };
+            } else if (dragging === 'unitVectorY') {
+                unitVectorY = { x: snappedX, y: snappedY };
+            }
+
+            draw();
+        }
+    }
+
+    function isOnVector(point, vector) {
+        const vectorPoint = { x: origin.x + vector.x, y: origin.y + vector.y };
+        const distance = Math.sqrt((point.x - vectorPoint.x) ** 2 + (point.y - vectorPoint.y) ** 2);
+        return distance < 10;
+    }
+
+    canvas.addEventListener('mousedown', (event) => {
+        if (gameWon || isPaused) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        const clickPoint = { x: x, y: y };
+
+        if (isOnVector(clickPoint, unitVectorX)) {
+            dragging = 'unitVectorX';
+        } else if (isOnVector(clickPoint, unitVectorY)) {
+            dragging = 'unitVectorY';
+        }
+    });
+
+    canvas.addEventListener('mousemove', handleMouseMove);
+
+    canvas.addEventListener('mouseup', () => {
+        dragging = null;
+    });
+
+    function startTimer() {
+        if (!timer) {
+            timer = setInterval(() => {
+                elapsedTime += 1;
+                document.getElementById('timer').innerText = `Timer: ${elapsedTime} seconds`;
+            }, 1000);
+        }
+    }
+
+    function stopTimer() {
+        clearInterval(timer);
+        timer = null;
+    }
+
     // Initial draw and start timer
     draw();
     startTimer();
 });
+
